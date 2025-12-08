@@ -1,7 +1,7 @@
 import { onUnmounted, ref } from 'vue'
 
-export function useImageUpload() {
-  const fileInput = ref<HTMLInputElement | null>(null)
+export function useImageUpload(r: HTMLInputElement | null) {
+  const fileInput = ref<HTMLInputElement | null>(r)
   const imageUrl = ref('')
   const originalWidth = ref(0)
   const originalHeight = ref(0)

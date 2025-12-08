@@ -9,14 +9,14 @@ defineOptions({
   name: 'IndexPage',
 })
 
+const fileInput = ref<HTMLInputElement | null>(null)
 const {
-  fileInput,
   imageUrl,
   originalWidth,
   originalHeight,
   triggerUpload,
   onFileChange,
-} = useImageUpload()
+} = useImageUpload(unref(fileInput))
 
 const {
   rows,
@@ -112,7 +112,7 @@ watchDebounced([
     <div grid="~ cols-1 lg:cols-12 gap-8">
       <div class="lg:col-span-3" flex flex-col gap-6>
         <div
-          class="hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 p-6 text-center border-2 border-gray-300 rounded-xl border-dashed cursor-pointer transition dark:border-gray-700"
+          class="hover:bg-primary/5 hover:border-primary dark:hover:bg-primary/10 p-6 text-center border-2 border-gray-300 rounded-xl border-dashed cursor-pointer transition dark:border-gray-700"
           @click="triggerUpload"
         >
           <input
@@ -356,7 +356,7 @@ watchDebounced([
               <div
                 v-for="(img, idx) in croppedImages"
                 :key="idx"
-                class="group bg-checkerboard bg-white aspect-square cursor-pointer relative dark:bg-gray-800"
+                class="bg-checkerboard group bg-white aspect-square cursor-pointer relative dark:bg-gray-800"
                 title="点击下载这张图片"
                 @click="handleDownloadSingle(img, idx)"
               >
