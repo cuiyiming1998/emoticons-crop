@@ -251,8 +251,8 @@ onMounted(() => {
               </div>
 
               <div class="gap-4 grid grid-cols-2">
-                <div class="space-y-1.5">
-                  <label class="text-xs text-gray-500 font-medium dark:text-gray-400">行数 (Rows)</label>
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-xs text-gray-500 leading-5 font-medium dark:text-gray-400">行数 (Rows)</label>
                   <input
                     v-model.number="rows"
                     type="number"
@@ -261,8 +261,8 @@ onMounted(() => {
                     class="modern-input"
                   >
                 </div>
-                <div class="space-y-1.5">
-                  <label class="text-xs text-gray-500 font-medium dark:text-gray-400">列数 (Cols)</label>
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-xs text-gray-500 leading-5 font-medium dark:text-gray-400">列数 (Cols)</label>
                   <input
                     v-model.number="cols"
                     type="number"
@@ -290,20 +290,20 @@ onMounted(() => {
               </div>
 
               <div class="gap-3 grid grid-cols-2">
-                <div class="space-y-1">
-                  <label class="text-[10px] text-gray-400 tracking-wider uppercase">X (Left)</label>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] text-gray-400 leading-4 tracking-wider uppercase">X (Left)</label>
                   <input v-model.number="startX" type="number" class="modern-input">
                 </div>
-                <div class="space-y-1">
-                  <label class="text-[10px] text-gray-400 tracking-wider uppercase">Y (Top)</label>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] text-gray-400 leading-4 tracking-wider uppercase">Y (Top)</label>
                   <input v-model.number="startY" type="number" class="modern-input">
                 </div>
-                <div class="space-y-1">
-                  <label class="text-[10px] text-gray-400 tracking-wider uppercase">Width</label>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] text-gray-400 leading-4 tracking-wider uppercase">Width</label>
                   <input v-model.number="totalWidth" type="number" class="modern-input">
                 </div>
-                <div class="space-y-1">
-                  <label class="text-[10px] text-gray-400 tracking-wider uppercase">Height</label>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] text-gray-400 leading-4 tracking-wider uppercase">Height</label>
                   <input v-model.number="totalHeight" type="number" class="modern-input">
                 </div>
               </div>
@@ -640,6 +640,17 @@ onMounted(() => {
 <style scoped>
 .modern-input {
   @apply w-full rounded-lg border-0 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 transition-all focus:bg-white focus:ring-2 focus:ring-primary/50 focus:outline-none dark:bg-gray-800 dark:text-white dark:ring-gray-700 dark:focus:bg-gray-800;
+}
+
+/* 移除所有输入框的难看 outline */
+.modern-input:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* 暗色模式下的焦点效果 */
+.dark .modern-input:focus {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
 }
 
 .modern-range {

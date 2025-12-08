@@ -5,17 +5,17 @@ const prompt = '将动漫角色后藤一里变形并设计24种LINE贴纸，姿�
 </script>
 
 <template>
-  <div class="bg-gradient-to-r dark:bg-gradient-to-r text-violet-700 p-4 border border-violet-200 rounded-xl flex gap-3 items-start from-violet-50/50 to-purple-50/50 dark:text-violet-300 dark:border-violet-800/30 dark:from-violet-950/30 dark:to-purple-950/30 dark:backdrop-blur-sm">
-    <div class="i-carbon-idea text-xl text-violet-600 mt-0.5 shrink-0 dark:text-violet-400" />
-    <div>
-      <p class="font-bold mb-1">
+  <div class="bg-gradient-to-r dark:bg-gradient-to-r text-violet-700 p-6 border-2 border-violet-200 rounded-2xl flex gap-4 shadow-lg items-start from-violet-50/50 to-purple-50/50 dark:text-violet-300 dark:border-violet-800/30 dark:from-violet-950/30 dark:to-purple-950/30 dark:backdrop-blur-sm">
+    <div class="i-carbon-idea text-3xl text-violet-600 mt-1 shrink-0 dark:text-violet-400" />
+    <div class="flex-1">
+      <p class="text-xl font-bold mb-3">
         还没有满意的图片？试试用
         <a :href="aiLocation" target="_blank" class="text-violet-600 font-bold underline transition-colors dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300">
           Gemini 3
         </a>
         生成一个吧！
       </p>
-      <p class="text-sm mb-2 opacity-90">
+      <p class="text-base leading-relaxed mb-3 opacity-90">
         1. 进入
         <a :href="aiLocation" target="_blank" class="text-violet-600 font-bold underline transition-colors dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300">
           Gemini
@@ -26,7 +26,7 @@ const prompt = '将动漫角色后藤一里变形并设计24种LINE贴纸，姿�
         </span>
         开始一个新的会话。
       </p>
-      <p class="text-sm mb-2 opacity-90">
+      <p class="text-base leading-relaxed mb-3 opacity-90">
         2. 点击
         <span class="text-violet-600 font-semibold dark:text-violet-400">
           工具
@@ -37,10 +37,10 @@ const prompt = '将动漫角色后藤一里变形并设计24种LINE贴纸，姿�
         </span>
         , 并选择思考模型。
       </p>
-      <p class="text-sm mb-2 opacity-90">
+      <p class="text-base leading-relaxed mb-4 opacity-90">
         3. 输入提示词。下面是一段示例:
       </p>
-      <div class="bg-gradient-to-r text-xs font-mono p-3 text-left border border-violet-200/50 rounded-lg select-all from-violet-100/30 to-purple-100/30 dark:text-violet-200 dark:border-violet-700/50 dark:from-violet-900/20 dark:to-purple-900/20">
+      <div class="bg-gradient-to-r text-sm leading-relaxed font-mono p-4 text-left border-2 border-violet-200/50 rounded-xl select-all from-violet-100/30 to-purple-100/30 dark:text-violet-200 dark:border-violet-700/50 dark:from-violet-900/20 dark:to-purple-900/20">
         {{ prompt }}
       </div>
     </div>
