@@ -1,231 +1,82 @@
 <script setup lang="ts">
-import { saveAs } from 'file-saver'
-import JSZip from 'jszip'
+import { watch } from 'vue'
+import { useCropConfig } from '~/composables/useCropConfig'
+import { useDownload } from '~/composables/useDownload'
+import { useImageCropper } from '~/composables/useImageCropper'
+import { useImageUpload } from '~/composables/useImageUpload'
 
 defineOptions({
   name: 'IndexPage',
 })
 
-const fileInput = ref<HTMLInputElement | null>(null)
-const imageUrl = ref('')
-// 原始图片尺寸
-const originalWidth = ref(0)
-const originalHeight = ref(0)
+const {
+  fileInput,
+  imageUrl,
+  originalWidth,
+  originalHeight,
+  triggerUpload,
+  onFileChange,
+} = useImageUpload()
 
-// 基础配置
-const rows = ref(4)
-const cols = ref(6)
+const {
+  rows,
+  cols,
+  startX,
+  startY,
+  totalWidth,
+  totalHeight,
+  lockCenter,
+  paddingX,
+  paddingY,
+  showGrid,
+  initConfig,
+} = useCropConfig()
 
-// 高级配置
-const startX = ref(0)
-const startY = ref(0)
-const totalWidth = ref(0)
-const totalHeight = ref(0)
-const lockCenter = ref(true)
-const paddingX = ref(0)
-const paddingY = ref(0)
-const showGrid = ref(true)
+const {
+  croppedImages,
+  isProcessing,
+  doCrop,
+} = useImageCropper()
 
-const croppedImages = ref<string[]>([])
-const isProcessing = ref(false)
+const {
+  downloadZip,
+  downloadSingleImage,
+  generateFileName,
+} = useDownload()
 
-function triggerUpload() {
-  fileInput.value?.click()
+// 当图片加载完成时初始化配置
+watch([originalWidth, originalHeight], ([width, height]) => {
+  if (width > 0 && height > 0) {
+    initConfig(width, height)
+  }
+})
+
+function handleFileChange(e: Event) {
+  onFileChange(e)
 }
 
-function onFileChange(e: Event) {
-  const target = e.target as HTMLInputElement
-  if (target.files && target.files[0]) {
-    const file = target.files[0]
-    // 释放之前的 URL 对象，防止内存泄漏
-    if (imageUrl.value) {
-      URL.revokeObjectURL(imageUrl.value)
-    }
-    const url = URL.createObjectURL(file)
-
-    // 获取图片尺寸并初始化配置
-    const img = new Image()
-    img.onload = () => {
-      originalWidth.value = img.width
-      originalHeight.value = img.height
-
-      // 重置配置
-      // 临时禁用锁定居中，防止初始化赋值时触发 watch 联动导致数值异常
-      const wasLocked = lockCenter.value
-      lockCenter.value = false
-
-      startX.value = 0
-      startY.value = 0
-      totalWidth.value = img.width
-      totalHeight.value = img.height
-      paddingX.value = 0
-      paddingY.value = 0
-
-      // 恢复锁定状态
-      nextTick(() => {
-        lockCenter.value = wasLocked
-      })
-
-      imageUrl.value = url
-    }
-    img.src = url
-  }
-}
-
-// 锁定居中逻辑
-// 防止循环触发的标志位
-const isInternalUpdate = ref(false)
-
-watch(startX, (val, oldVal) => {
-  if (isInternalUpdate.value)
-    return
-
-  if (lockCenter.value && imageUrl.value) {
-    const diff = val - oldVal
-    isInternalUpdate.value = true
-    totalWidth.value -= diff * 2
-    nextTick(() => {
-      isInternalUpdate.value = false
-    })
-  }
-})
-
-watch(startY, (val, oldVal) => {
-  if (isInternalUpdate.value)
-    return
-
-  if (lockCenter.value && imageUrl.value) {
-    const diff = val - oldVal
-    isInternalUpdate.value = true
-    totalHeight.value -= diff * 2
-    nextTick(() => {
-      isInternalUpdate.value = false
-    })
-  }
-})
-
-watch(totalWidth, (val, oldVal) => {
-  if (isInternalUpdate.value)
-    return
-
-  if (lockCenter.value && imageUrl.value) {
-    const diff = val - oldVal
-    isInternalUpdate.value = true
-    startX.value -= diff / 2
-    nextTick(() => {
-      isInternalUpdate.value = false
-    })
-  }
-})
-
-watch(totalHeight, (val, oldVal) => {
-  if (isInternalUpdate.value)
-    return
-
-  if (lockCenter.value && imageUrl.value) {
-    const diff = val - oldVal
-    isInternalUpdate.value = true
-    startY.value -= diff / 2
-    nextTick(() => {
-      isInternalUpdate.value = false
-    })
-  }
-})
-
-async function doCrop() {
+async function performCrop() {
   if (!imageUrl.value)
     return
 
-  isProcessing.value = true
-  // 给一点时间让 UI 渲染 loading 状态
-  await nextTick()
-
-  const img = new Image()
-  img.src = imageUrl.value
-  img.onload = () => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-
-    if (!ctx) {
-      isProcessing.value = false
-      return
-    }
-
-    // 计算单个格子的尺寸（基于总裁剪区域）
-    const cellWidth = totalWidth.value / cols.value
-    const cellHeight = totalHeight.value / rows.value
-
-    const images: string[] = []
-
-    for (let r = 0; r < rows.value; r++) {
-      for (let c = 0; c < cols.value; c++) {
-        // 计算源图像上的裁剪区域
-        // 加上 padding (内缩)
-        // 这里的 padding 是每个格子内部向内缩进的距离
-        // 所以实际裁剪的起点要加上 paddingX/Y
-        // 实际裁剪的宽高要减去 2 * paddingX/Y
-
-        const srcX = startX.value + c * cellWidth + paddingX.value
-        const srcY = startY.value + r * cellHeight + paddingY.value
-        const srcW = cellWidth - 2 * paddingX.value
-        const srcH = cellHeight - 2 * paddingY.value
-
-        // 如果计算出的尺寸无效，跳过
-        if (srcW <= 0 || srcH <= 0) {
-          images.push('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7') // 透明占位图
-          continue
-        }
-
-        canvas.width = srcW
-        canvas.height = srcH
-        // 清除画布
-        ctx.clearRect(0, 0, srcW, srcH)
-        // 绘制对应区域
-        ctx.drawImage(
-          img,
-          srcX,
-          srcY,
-          srcW,
-          srcH,
-          0,
-          0,
-          srcW,
-          srcH,
-        )
-        images.push(canvas.toDataURL('image/png'))
-      }
-    }
-
-    croppedImages.value = images
-    isProcessing.value = false
-  }
-
-  img.onerror = () => {
-    isProcessing.value = false
-  }
-}
-
-async function downloadZip() {
-  if (croppedImages.value.length === 0)
-    return
-
-  const zip = new JSZip()
-  croppedImages.value.forEach((dataUrl, index) => {
-    // data:image/png;base64,......
-    const base64Data = dataUrl.split(',')[1]
-    // 文件名格式: emoji_行_列.png (为了方便排序，可以用索引)
-    // 或者直接用 emoji_01.png, emoji_02.png
-    const fileName = `emoji_${(index + 1).toString().padStart(3, '0')}.png`
-    zip.file(fileName, base64Data, { base64: true })
+  await doCrop(imageUrl.value, {
+    rows: rows.value,
+    cols: cols.value,
+    startX: startX.value,
+    startY: startY.value,
+    totalWidth: totalWidth.value,
+    totalHeight: totalHeight.value,
+    paddingX: paddingX.value,
+    paddingY: paddingY.value,
   })
-
-  const content = await zip.generateAsync({ type: 'blob' })
-  saveAs(content, 'emojis.zip')
 }
 
-function downloadSingleImage(dataUrl: string, index: number) {
-  const fileName = `emoji_${(index + 1).toString().padStart(3, '0')}.png`
-  saveAs(dataUrl, fileName)
+function handleDownloadZip() {
+  downloadZip(croppedImages.value)
+}
+
+function handleDownloadSingle(dataUrl: string, index: number) {
+  downloadSingleImage(dataUrl, generateFileName(index))
 }
 
 // 监听配置变化，自动重新裁剪
@@ -241,7 +92,7 @@ watchDebounced([
   paddingY,
 ], () => {
   if (imageUrl.value) {
-    doCrop()
+    performCrop()
   }
 }, { debounce: 500, maxWait: 2000 })
 </script>
@@ -269,7 +120,7 @@ watchDebounced([
             type="file"
             accept="image/*"
             hidden
-            @change="onFileChange"
+            @change="handleFileChange"
           >
           <div v-if="imageUrl" class="relative">
             <img :src="imageUrl" class="mx-auto rounded max-h-32 shadow-sm object-contain">
@@ -419,7 +270,7 @@ watchDebounced([
             <button
               class="bg-primary hover:bg-primary-600 text-white px-4 py-2 rounded-lg flex gap-2 w-full shadow-lg transition items-center justify-center btn disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="croppedImages.length === 0 || isProcessing"
-              @click="downloadZip"
+              @click="handleDownloadZip"
             >
               <div v-if="isProcessing" i-carbon-circle-dash animate-spin />
               <div v-else i-carbon-download />
@@ -507,7 +358,7 @@ watchDebounced([
                 :key="idx"
                 class="group bg-checkerboard bg-white aspect-square cursor-pointer relative dark:bg-gray-800"
                 title="点击下载这张图片"
-                @click="downloadSingleImage(img, idx)"
+                @click="handleDownloadSingle(img, idx)"
               >
                 <img :src="img" class="h-full w-full object-contain">
                 <div class="text-xs text-white bg-black/50 opacity-0 flex transition items-center inset-0 justify-center absolute group-hover:opacity-100">
