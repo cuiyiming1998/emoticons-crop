@@ -12,10 +12,6 @@
 
 <br>
 
-<p align='center'>
-<b>English</b> | <a href="https://github.com/cuiyiming1998/emoticons-crop/README.zh-CN.md">简体中文</a>
-</p>
-
 ## Features
 
 - ⚡️ [Vue 3](https://github.com/vuejs/core), [Vite](https://github.com/vitejs/vite), [pnpm](https://pnpm.io/), [ESBuild](https://github.com/evanw/esbuild) - born with fastness
