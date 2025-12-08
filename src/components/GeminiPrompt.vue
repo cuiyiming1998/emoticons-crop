@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Gemini Prompt 组件，仅用于展示提示信息
 const aiLocation = 'https://gemini.google.com/app'
-const prompt = '将动漫角色后藤一里变形并设计24种LINE贴纸，姿势和排版要富有创意，对话为简体中文，不要有重复， 生成的图片为4k分辨率，比例为16:9，去除背景， 生成后的大图使用4 * 6的排版'
+const prompt = '将动漫角色后藤一里变形并设计24种LINE贴纸，姿势和排版要富有创意，对话为简体中文，不要有重复， 生成的图片为4k分辨率，比例为16:9，白色背景， 生成后的大图使用4 * 6的排版'
 </script>
 
 <template>

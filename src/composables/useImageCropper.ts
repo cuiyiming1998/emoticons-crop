@@ -1,4 +1,4 @@
-import { ref, nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
 
 export function useImageCropper() {
   const croppedImages = ref<string[]>([])
@@ -13,6 +13,8 @@ export function useImageCropper() {
     totalHeight: number
     paddingX: number
     paddingY: number
+    removeBackground?: boolean
+    backgroundColor?: string
   }) {
     if (!imageUrl)
       return []
@@ -60,11 +62,20 @@ export function useImageCropper() {
               continue
             }
 
-            canvas.width = srcW
-            canvas.height = srcH
-            // 清除画布
+            canvas.width = Math.round(srcW)
+            canvas.height = Math.round(srcH)
+
+            // 清除画布并确保透明背景
             ctx.clearRect(0, 0, srcW, srcH)
-            // 绘制对应区域
+
+            // 确保画布支持透明度
+            ctx.globalAlpha = 1.0
+            ctx.globalCompositeOperation = 'source-over'
+
+            const canvasW = Math.round(srcW)
+            const canvasH = Math.round(srcH)
+
+            // 先绘制对应区域
             ctx.drawImage(
               img,
               srcX,
@@ -73,9 +84,71 @@ export function useImageCropper() {
               srcH,
               0,
               0,
-              srcW,
-              srcH,
+              canvasW,
+              canvasH,
             )
+
+            // 如果需要去除背景
+            if (config.removeBackground && config.backgroundColor && config.backgroundColor.trim() !== '') {
+              const imageData = ctx.getImageData(0, 0, canvasW, canvasH)
+              const data = imageData.data
+
+              // 将背景色转换为RGB
+              const hexToRgb = (hex: string) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+                return result
+                  ? {
+                      r: Number.parseInt(result[1], 16),
+                      g: Number.parseInt(result[2], 16),
+                      b: Number.parseInt(result[3], 16),
+                    }
+                  : { r: 255, g: 255, b: 255 }
+              }
+
+              const bgColor = hexToRgb(config.backgroundColor)
+
+              // 遍历像素，更智能的背景去除
+              for (let i = 0; i < data.length; i += 4) {
+                const r = data[i]
+                const g = data[i + 1]
+                const b = data[i + 2]
+                const a = data[i + 3]
+
+                // 如果已经透明就跳过
+                if (a === 0)
+                  continue
+
+                // 计算与背景色的距离
+                const colorDiff = Math.sqrt(
+                  (r - bgColor.r) ** 2
+                  + (g - bgColor.g) ** 2
+                  + (b - bgColor.b) ** 2,
+                )
+
+                // 计算亮度
+                const brightness = (r + g + b) / 3
+
+                // 计算饱和度（颜色鲜艳程度）
+                const max = Math.max(r, g, b)
+                const min = Math.min(r, g, b)
+                const saturation = max === 0 ? 0 : (max - min) / max
+
+                // 更严格的背景判断条件
+                const isVerySimilarColor = colorDiff < 20 // 颜色非常接近
+                const isSimilarBrightness = Math.abs(brightness - ((bgColor.r + bgColor.g + bgColor.b) / 3)) < 30
+                const isLowSaturation = saturation < 0.15 // 饱和度低，接近灰度
+                const isLightColor = brightness > 200 // 亮色
+
+                // 只有同时满足所有条件才认为是背景
+                if (isVerySimilarColor && isSimilarBrightness && isLowSaturation && isLightColor) {
+                  data[i + 3] = 0 // alpha channel
+                }
+              }
+
+              // 将处理后的图像数据重新绘制到画布
+              ctx.putImageData(imageData, 0, 0)
+            }
+
             images.push(canvas.toDataURL('image/png'))
           }
         }

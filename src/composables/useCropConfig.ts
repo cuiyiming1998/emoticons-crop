@@ -1,17 +1,4 @@
-import { ref, watch, nextTick } from 'vue'
-
-interface CropConfig {
-  rows: number
-  cols: number
-  startX: number
-  startY: number
-  totalWidth: number
-  totalHeight: number
-  lockCenter: boolean
-  paddingX: number
-  paddingY: number
-  showGrid: boolean
-}
+import { nextTick, ref, watch } from 'vue'
 
 export function useCropConfig() {
   // 基础配置
@@ -27,6 +14,8 @@ export function useCropConfig() {
   const paddingX = ref(0)
   const paddingY = ref(0)
   const showGrid = ref(true)
+  const removeBackground = ref(true)
+  const backgroundColor = ref('#FFFFFF')
 
   // 防止循环触发的标志位
   const isInternalUpdate = ref(false)
@@ -117,6 +106,8 @@ export function useCropConfig() {
     paddingX,
     paddingY,
     showGrid,
+    removeBackground,
+    backgroundColor,
     initConfig,
   }
 }

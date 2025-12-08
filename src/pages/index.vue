@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useCropConfig } from '~/composables/useCropConfig'
 import { useDownload } from '~/composables/useDownload'
 import { useImageCropper } from '~/composables/useImageCropper'
@@ -10,12 +10,15 @@ defineOptions({
 })
 
 const fileInput = ref<HTMLInputElement | null>(null)
+const isColorPicking = ref(false)
+const colorPickerCursor = ref({ x: 0, y: 0 })
 const {
   imageUrl,
   originalWidth,
   originalHeight,
   triggerUpload,
   onFileChange,
+  resetImage,
 } = useImageUpload(fileInput)
 
 const {
@@ -29,6 +32,8 @@ const {
   paddingX,
   paddingY,
   showGrid,
+  removeBackground,
+  backgroundColor,
   initConfig,
 } = useCropConfig()
 
@@ -36,6 +41,7 @@ const {
   croppedImages,
   isProcessing,
   doCrop,
+  clearCroppedImages,
 } = useImageCropper()
 
 const {
@@ -51,11 +57,11 @@ watch([originalWidth, originalHeight], ([width, height]) => {
   }
 })
 
-function handleFileChange(e: Event) {
+const handleFileChange = (e: Event) => {
   onFileChange(e)
 }
 
-async function performCrop() {
+const performCrop = async () => {
   if (!imageUrl.value)
     return
 
@@ -68,15 +74,79 @@ async function performCrop() {
     totalHeight: totalHeight.value,
     paddingX: paddingX.value,
     paddingY: paddingY.value,
+    removeBackground: removeBackground.value,
+    backgroundColor: backgroundColor.value,
   })
 }
 
-function handleDownloadZip() {
+const handleDownloadZip = () => {
   downloadZip(croppedImages.value)
 }
 
-function handleDownloadSingle(dataUrl: string, index: number) {
+const handleDownloadSingle = (dataUrl: string, index: number) => {
   downloadSingleImage(dataUrl, generateFileName(index))
+}
+
+const handleClearImage = () => {
+  resetImage()
+  clearCroppedImages()
+  stopColorPicking()
+}
+
+const startColorPicking = () => {
+  isColorPicking.value = true
+}
+
+const stopColorPicking = () => {
+  isColorPicking.value = false
+}
+
+const pickColor = (event: MouseEvent) => {
+  if (!isColorPicking.value || !imageUrl.value)
+    return
+
+  const target = event.target as HTMLElement
+  if (!target || target.tagName !== 'IMG')
+    return
+
+  const rect = target.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+
+  // 创建canvas来获取像素颜色
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx)
+    return
+
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => {
+    canvas.width = img.width
+    canvas.height = img.height
+    ctx.drawImage(img, 0, 0)
+
+    // 计算在原图上的坐标
+    const scaleX = img.width / rect.width
+    const scaleY = img.height / rect.height
+    const imgX = Math.floor(x * scaleX)
+    const imgY = Math.floor(y * scaleY)
+
+    const imageData = ctx.getImageData(imgX, imgY, 1, 1)
+    const [r, g, b] = imageData.data
+
+    // 转换为十六进制
+    const toHex = (n: number) => n.toString(16).padStart(2, '0')
+    backgroundColor.value = `#${toHex(r)}${toHex(g)}${toHex(b)}`
+    stopColorPicking()
+  }
+  img.src = imageUrl.value
+}
+
+const handleMouseMove = (event: MouseEvent) => {
+  if (isColorPicking.value) {
+    colorPickerCursor.value = { x: event.clientX, y: event.clientY }
+  }
 }
 
 // 监听配置变化，自动重新裁剪
@@ -90,11 +160,22 @@ watchDebounced([
   totalHeight,
   paddingX,
   paddingY,
+  removeBackground,
+  backgroundColor,
 ], () => {
   if (imageUrl.value) {
     performCrop()
   }
 }, { debounce: 500, maxWait: 2000 })
+
+// 全局事件监听
+onMounted(() => {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isColorPicking.value) {
+      stopColorPicking()
+    }
+  })
+})
 </script>
 
 <template>
@@ -112,8 +193,8 @@ watchDebounced([
         </p>
       </div>
 
-      <div class="gap-8 grid items-start lg:grid-cols-12">
-        <div class="space-y-6 lg:col-span-4">
+      <div class="gap-10 grid items-start lg:grid-cols-12">
+        <div class="space-y-8 lg:col-span-4">
           <div
             class="group p-1 border border-gray-100 rounded-2xl bg-white transition-all relative overflow-hidden dark:border-gray-800 dark:bg-gray-900 hover:shadow-lg"
             @click="triggerUpload"
@@ -151,6 +232,16 @@ watchDebounced([
               </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            class="text-red-600 font-medium px-4 py-3 border-2 border-red-200 rounded-xl bg-white flex gap-2 w-full transition-all duration-200 items-center justify-center dark:text-red-400 dark:border-red-800 disabled:border-red-200 hover:border-red-300 dark:bg-gray-900 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md dark:hover:border-red-700 disabled:dark:border-red-800 dark:hover:bg-red-950/50 disabled:hover:bg-transparent disabled:hover:shadow-none disabled:hover:translate-y-0 hover:-translate-y-0.5"
+            :disabled="!imageUrl"
+            @click="handleClearImage"
+          >
+            <div i-carbon-trash-can class="text-lg" />
+            清除图片
+          </button>
 
           <div class="p-6 border border-gray-100 rounded-2xl bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div class="space-y-4">
@@ -256,14 +347,151 @@ watchDebounced([
               </div>
             </div>
 
-            <div class="mt-8">
-              <label class="text-sm text-gray-600 mb-4 flex gap-2 cursor-pointer select-none items-center dark:text-gray-400">
-                <input v-model="showGrid" type="checkbox" class="text-primary focus:ring-primary border-gray-300 rounded">
-                显示预览网格
-              </label>
+            <div class="my-6 bg-gray-100 h-px dark:bg-gray-800" />
+
+            <!-- Background Settings -->
+            <div class="space-y-4">
+              <div class="text-sm text-gray-900 font-semibold flex gap-2 items-center dark:text-white">
+                <div i-carbon-palette class="text-primary" />
+                背景设置
+              </div>
+
+              <div class="space-y-4">
+                <!-- 去除背景色开关 -->
+                <div class="bg-gradient-to-r p-3 border border-gray-200 rounded-xl from-gray-50 to-gray-100 dark:border-gray-700 dark:from-gray-800/50 dark:to-gray-900/50">
+                  <label class="flex gap-3 cursor-pointer select-none items-center">
+                    <div class="relative">
+                      <input
+                        v-model="removeBackground"
+                        type="checkbox"
+                        class="peer sr-only"
+                      >
+                      <div class="peer peer-checked:bg-primary rounded-full bg-gray-200 h-6 w-11 peer-focus:outline-none after:rounded-full after:bg-white dark:bg-gray-700 after:h-5 after:w-5 after:content-[''] after:transition-all after:left-[2px] after:top-[2px] after:absolute peer-checked:after:border-white peer-checked:after:translate-x-full" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-sm text-gray-900 font-medium dark:text-white">
+                        启用背景去除
+                      </div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">
+                        智能移除指定颜色的背景
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                <!-- 颜色选择区域 -->
+                <div
+                  v-if="removeBackground"
+                  class="from-primary/8 via-primary/5 to-primary/8 bg-gradient-to-br border-primary/20 dark:from-primary/12 dark:via-primary/8 dark:to-primary/12 dark:border-primary/30 border rounded-2xl shadow-lg relative overflow-hidden"
+                >
+                  <div class="bg-gradient-to-r opacity-40 inset-0 absolute from-transparent to-transparent via-white/20" />
+                  <div class="p-5 relative space-y-4">
+                    <div class="flex items-center justify-between">
+                      <div class="flex gap-3 items-center">
+                        <div class="relative">
+                          <div class="bg-primary rounded-full h-3 w-3 animate-pulse" />
+                          <div class="bg-primary/30 rounded-full h-3 w-3 inset-0 absolute animate-ping" />
+                        </div>
+                        <label class="text-sm text-gray-900 font-bold dark:text-white">
+                          背景颜色选择
+                        </label>
+                      </div>
+                      <div class="flex gap-2 items-center">
+                        <div class="group relative">
+                          <div
+                            class="border-2 border-white rounded-xl h-10 w-10 shadow-lg transition-transform group-hover:scale-110"
+                            :style="{ backgroundColor: backgroundColor || '#FFFFFF' }"
+                          />
+                          <div class="bg-gradient-to-r from-primary/20 to-primary/0 rounded-xl absolute blur-sm -inset-1" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                      <button
+                        type="button"
+                        class="group flex-1 relative"
+                        @click="isColorPicking ? stopColorPicking() : startColorPicking()"
+                      >
+                        <div class="bg-gradient-to-r from-primary to-primary/80 rounded-xl opacity-0 transition-opacity inset-0 absolute blur group-hover:opacity-100" />
+                        <div
+                          class="text-sm font-medium px-4 py-3 border-2 rounded-xl bg-white/90 flex gap-2 shadow-md transition-all duration-300 items-center justify-center relative backdrop-blur-sm dark:border-gray-600 dark:bg-gray-800/90 hover:shadow-xl hover:-translate-y-0.5"
+                          :class="{
+                            'border-primary/40 bg-primary/10 text-primary shadow-lg shadow-primary/25 dark:bg-primary/20 dark:border-primary/50': isColorPicking,
+                            'border-gray-200 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white': !isColorPicking,
+                          }"
+                        >
+                          <div
+                            class="text-lg transition-transform duration-300"
+                            :class="{ 'animate-bounce': isColorPicking }"
+                          >
+                            <div v-if="isColorPicking" i-carbon-close />
+                            <div v-else i-carbon-pipette />
+                          </div>
+                          <span class="font-semibold">{{ isColorPicking ? '取消取色' : '从图片取色' }}</span>
+                        </div>
+                      </button>
+
+                      <div class="group flex-1 relative">
+                        <div class="bg-gradient-to-r via-primary/10 rounded-xl opacity-0 transition-opacity inset-0 absolute from-transparent to-transparent blur group-hover:opacity-100" />
+                        <input
+                          v-model="backgroundColor"
+                          type="text"
+                          placeholder="#FFFFFF"
+                          class="dark:focus:border-primary/40 text-sm font-medium px-4 py-3 pr-12 border-2 rounded-xl bg-white/90 w-full shadow-md transition-all duration-300 relative backdrop-blur-sm dark:text-white dark:border-gray-600 dark:bg-gray-800/90 focus:shadow-xl hover:shadow-lg focus:-translate-y-0.5"
+                        >
+                        <div class="transform transition-transform duration-300 right-3 top-1/2 absolute -translate-y-1/2 group-hover:scale-110">
+                          <div
+                            class="border-2 border-white rounded-lg h-6 w-6 shadow-md"
+                            :style="{ backgroundColor: backgroundColor || '#FFFFFF' }"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      v-if="isColorPicking"
+                      class="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30 px-4 py-3 border rounded-xl relative overflow-hidden"
+                    >
+                      <div class="bg-gradient-to-r via-primary/20 inset-0 absolute animate-pulse from-transparent to-transparent" />
+                      <div class="text-primary text-sm font-medium flex gap-2 items-center justify-center relative">
+                        <div class="relative">
+                          <div i-carbon-information class="text-base" />
+                          <div class="bg-primary/30 rounded-full inset-0 absolute animate-ping" />
+                        </div>
+                        <span class="font-semibold">点击预览区域图片上的任意位置取色</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-8 space-y-4">
+              <!-- 预览网格开关 -->
+              <div class="bg-gradient-to-r p-3 border border-gray-200 rounded-xl from-gray-50 to-gray-100 dark:border-gray-700 dark:from-gray-800/50 dark:to-gray-900/50">
+                <label class="flex gap-3 cursor-pointer select-none items-center">
+                  <div class="relative">
+                    <input
+                      v-model="showGrid"
+                      type="checkbox"
+                      class="peer sr-only"
+                    >
+                    <div class="peer peer-checked:bg-primary rounded-full bg-gray-200 h-6 w-11 peer-focus:outline-none after:rounded-full after:bg-white dark:bg-gray-700 after:h-5 after:w-5 after:content-[''] after:transition-all after:left-[2px] after:top-[2px] after:absolute peer-checked:after:border-white peer-checked:after:translate-x-full" />
+                  </div>
+                  <div class="flex-1">
+                    <div class="text-sm text-gray-900 font-medium dark:text-white">
+                      显示预览网格
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      在图片上显示裁剪区域的网格线
+                    </div>
+                  </div>
+                </label>
+              </div>
 
               <button
-                class="shadow-primary/30 bg-primary border-primary/20 hover:shadow-primary/40 hover:border-primary/40 dark:border-primary/30 dark:hover:border-primary/50 text-sm text-gray-900 font-semibold px-4 py-3 border-2 rounded-xl flex gap-2 w-full shadow-lg transition-all items-center justify-center dark:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0 hover:-translate-y-0.5"
+                class="bg-primary border-primary/20 dark:border-primary/30 shadow-primary/30 hover:shadow-primary/40 hover:border-primary/40 dark:hover:border-primary/50 text-sm text-gray-900 font-semibold px-4 py-3 border-2 rounded-xl flex gap-2 w-full shadow-lg transition-all items-center justify-center dark:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0 hover:-translate-y-0.5"
                 :disabled="croppedImages.length === 0 || isProcessing"
                 @click="handleDownloadZip"
               >
@@ -275,7 +503,7 @@ watchDebounced([
           </div>
         </div>
 
-        <div class="flex flex-col gap-6 lg:col-span-8">
+        <div class="flex flex-col gap-8 lg:col-span-8">
           <GeminiPrompt v-if="!imageUrl" />
 
           <div
@@ -291,24 +519,33 @@ watchDebounced([
           </div>
 
           <template v-else>
-            <div class="border border-gray-100 rounded-2xl bg-white shadow-sm overflow-hidden dark:border-gray-800 dark:bg-gray-900">
-              <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/50">
+            <div class="border border-gray-100 rounded-2xl bg-white shadow-lg overflow-hidden dark:border-gray-800 dark:bg-gray-900/50 dark:backdrop-blur-xl">
+              <div class="bg-gradient-to-r px-5 py-4 border-b border-gray-100/60 from-gray-50 to-white dark:border-gray-700 dark:from-gray-800/50 dark:to-gray-900/50">
                 <h3 class="text-sm text-gray-900 font-bold flex gap-2 items-center dark:text-white">
-                  <div i-carbon-image class="text-primary" />
+                  <div class="bg-primary/10 p-1.5 rounded-lg">
+                    <div i-carbon-image class="text-primary text-base" />
+                  </div>
                   预览区域
+                  <span v-if="isColorPicking" class="bg-primary/10 text-primary text-xs font-medium ml-auto px-2.5 py-1 rounded-full flex gap-1 items-center">
+                    <div class="bg-primary rounded-full h-1.5 w-1.5 animate-pulse" />
+                    取色中
+                  </span>
                 </h3>
               </div>
 
-              <div class="bg-checkerboard-light dark:bg-checkerboard-dark p-6 flex justify-center overflow-auto">
-                <div class="rounded-lg bg-white inline-block shadow-lg relative overflow-hidden dark:bg-gray-800">
+              <div class="p-8 bg-gray-50/80 flex justify-center overflow-auto dark:bg-gray-900/80">
+                <div class="rounded-2xl bg-white ring-1 ring-gray-900/5 shadow-2xl relative overflow-hidden dark:bg-gray-800 dark:ring-white/10">
                   <img
                     :src="imageUrl"
-                    class="max-w-full block"
-                    :style="{ maxHeight: '500px' }"
+                    class="max-w-full block transition-transform duration-300 ease-out hover:scale-[1.02]"
+                    :class="{ 'cursor-crosshair': isColorPicking }"
+                    :style="{ maxHeight: '520px', imageRendering: 'auto' }"
+                    @click="pickColor"
+                    @mousemove="handleMouseMove"
                   >
                   <div
                     v-if="showGrid"
-                    class="border-primary/80 border pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] box-content absolute"
+                    class="border-primary/60 border pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.25)] box-content absolute"
                     :style="{
                       left: `${(startX / originalWidth) * 100}%`,
                       top: `${(startY / originalHeight) * 100}%`,
@@ -320,13 +557,13 @@ watchDebounced([
                       <div
                         v-for="i in cols - 1"
                         :key="`v-${i}`"
-                        class="border-primary/50 border-l bottom-0 top-0 absolute"
+                        class="border-primary/40 border-l bottom-0 top-0 absolute"
                         :style="{ left: `${(i / cols) * 100}%` }"
                       />
                       <div
                         v-for="i in rows - 1"
                         :key="`h-${i}`"
-                        class="border-primary/50 border-t left-0 right-0 absolute"
+                        class="border-primary/40 border-t left-0 right-0 absolute"
                         :style="{ top: `${(i / rows) * 100}%` }"
                       />
                     </div>
@@ -335,46 +572,61 @@ watchDebounced([
               </div>
             </div>
 
-            <div class="border border-gray-100 rounded-2xl bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between dark:border-gray-800 dark:bg-gray-800/50">
+            <div class="border border-gray-100 rounded-2xl bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900/50 dark:backdrop-blur-xl">
+              <div class="bg-gradient-to-r px-5 py-4 border-b border-gray-100/60 flex items-center justify-between from-gray-50 to-white dark:border-gray-700 dark:from-gray-800/50 dark:to-gray-900/50">
                 <h3 class="text-sm text-gray-900 font-bold flex gap-2 items-center dark:text-white">
-                  <div i-carbon-grid class="text-primary" />
+                  <div class="bg-primary/10 p-1.5 rounded-lg">
+                    <div i-carbon-grid class="text-primary text-base" />
+                  </div>
                   裁剪结果
-                  <span class="bg-primary/10 text-primary text-xs font-medium ml-2 px-2 py-0.5 rounded-full">{{ croppedImages.length }} 张</span>
+                  <span class="bg-gradient-to-r from-primary/10 to-primary/5 text-primary border-primary/20 text-xs font-bold ml-2 px-3 py-1 border rounded-full">{{ croppedImages.length }} 张</span>
                 </h3>
-                <span class="text-xs text-gray-400">
-                  点击图片可单独下载
-                </span>
+                <div class="flex gap-2 items-center">
+                  <span class="text-xs text-gray-400 flex gap-1 items-center">
+                    <div i-carbon-information class="text-gray-300" />
+                    点击图片可单独下载
+                  </span>
+                </div>
               </div>
 
               <div class="p-6">
                 <div
                   v-if="croppedImages.length > 0"
-                  class="p-2 rounded-xl bg-gray-50 gap-2 grid overflow-hidden dark:bg-gray-950/50"
+                  class="bg-gradient-to-br p-4 rounded-2xl gap-3 grid overflow-hidden from-gray-50/50 to-gray-100/30 dark:from-gray-800/30 dark:to-gray-900/50 dark:backdrop-blur"
                   :style="{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }"
                 >
                   <div
                     v-for="(img, idx) in croppedImages"
                     :key="idx"
-                    class="group hover:ring-primary rounded-lg bg-white aspect-square cursor-pointer ring-1 ring-gray-900/5 shadow-sm transition-all relative overflow-hidden dark:bg-gray-800 hover:ring-2 dark:ring-white/10"
-                    title="点击下载"
+                    class="group hover:shadow-primary/5 hover:ring-primary/60 dark:hover:shadow-primary/10 rounded-xl bg-white aspect-square cursor-pointer ring-1 ring-gray-900/8 shadow-md transition-all duration-300 relative overflow-hidden dark:bg-gray-800/90 dark:ring-white/10 hover:shadow-xl hover:-translate-y-1"
+                    :title="`下载第 ${idx + 1} 张图片`"
                     @click="handleDownloadSingle(img, idx)"
                   >
-                    <div class="bg-checkerboard-light dark:bg-checkerboard-dark opacity-50 inset-0 absolute" />
-                    <img :src="img" class="h-full w-full relative object-contain">
-                    <div class="bg-black/40 opacity-0 flex transition-all duration-200 items-center inset-0 justify-center absolute backdrop-blur-[2px] group-hover:opacity-100">
-                      <div class="text-primary rounded-full bg-white flex h-8 w-8 shadow-lg items-center justify-center">
-                        <div i-carbon-download />
+                    <img
+                      :src="img"
+                      class="h-full w-full transition-all duration-200 relative z-10 object-contain group-hover:opacity-85"
+                    >
+                    <div class="bg-gradient-to-t p-3 opacity-100 flex transition-all duration-200 items-center inset-0 justify-center absolute z-20 from-black/60 to-transparent via-black/20">
+                      <div class="bg-primary text-xs text-white font-semibold px-3 py-2 border border-white/20 rounded-lg opacity-0 flex gap-1.5 shadow-2xl translate-y-4 scale-95 transform transition-all duration-200 items-center backdrop-blur-sm group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100">
+                        <div i-carbon-download class="text-sm" />
+                        下载
                       </div>
+                    </div>
+                    <div class="text-xs text-white font-medium px-2 py-1 rounded-lg bg-black/60 opacity-0 transition-all duration-200 right-2 top-2 absolute z-20 backdrop-blur-sm group-hover:opacity-100">
+                      #{{ idx + 1 }}
                     </div>
                   </div>
                 </div>
 
-                <div v-else-if="isProcessing" class="py-20 flex flex-col items-center justify-center">
-                  <div i-carbon-circle-dash class="text-primary text-3xl mb-4 animate-spin" />
-                  <p class="text-sm text-gray-500 font-medium">
+                <div v-else-if="isProcessing" class="py-24 flex flex-col items-center justify-center">
+                  <div class="relative">
+                    <div i-carbon-circle-dash class="text-primary text-4xl animate-spin" />
+                    <div class="bg-primary/20 rounded-full inset-0 absolute animate-pulse blur-xl" />
+                  </div>
+                  <div class="text-sm text-gray-500 font-medium mt-4 flex gap-2 items-center">
+                    <div class="bg-primary rounded-full h-1.5 w-1.5 animate-pulse" />
                     正在处理中...
-                  </p>
+                  </div>
                 </div>
               </div>
             </div>
