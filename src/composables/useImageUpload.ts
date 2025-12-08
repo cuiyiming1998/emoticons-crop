@@ -1,13 +1,12 @@
 import { onUnmounted, ref } from 'vue'
 
-export function useImageUpload(r: HTMLInputElement | null) {
-  const fileInput = ref<HTMLInputElement | null>(r)
+export function useImageUpload(fileInputRef: Ref<HTMLInputElement | null>) {
   const imageUrl = ref('')
   const originalWidth = ref(0)
   const originalHeight = ref(0)
 
   function triggerUpload() {
-    fileInput.value?.click()
+    fileInputRef.value?.click()
   }
 
   function onFileChange(e: Event) {
@@ -47,7 +46,7 @@ export function useImageUpload(r: HTMLInputElement | null) {
   })
 
   return {
-    fileInput,
+    fileInput: fileInputRef,
     imageUrl,
     originalWidth,
     originalHeight,
