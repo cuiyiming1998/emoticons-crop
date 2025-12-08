@@ -5,15 +5,24 @@
 </div>
 
 <div align="center">
+  <a href="https://emoticons-crop.netlify.app" target="_blank">
+    <img src="https://img.shields.io/badge/🔗-在线体验-00C853?style=for-the-badge&logo=netlify&logoColor=white" alt="在线体验">
+  </a>
   <img src="https://img.shields.io/badge/Vue-3.5-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue 3.5">
   <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/Tailwind-3.4-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/UnoCSS-v66.2-333333?style=for-the-badge&logo=unocss&logoColor=white" alt="UnoCSS">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License">
 </div>
 
 ## 📖 简介
 
 一个超级可爱的表情包裁剪工具！上传大图，自动切割成网格布局，支持背景去除和多种自定义设置，一键打包下载所有裁剪结果~ (≧∇≦)ﾉ
+
+### 🚀 在线体验
+
+<a href="https://emoticons-crop.netlify.app" target="_blank">
+  https://emoticons-crop.netlify.app
+</a>
 
 ## ✨ 主要特性
 
@@ -100,7 +109,7 @@ pnpm preview
 
 - **前端框架**: Vue 3.5
 - **类型系统**: TypeScript
-- **样式框架**: Tailwind CSS
+- **样式框架**: UnoCSS
 - **构建工具**: Vite
 - **图片处理**: Canvas API
 - **状态管理**: Vue Composition API
@@ -125,19 +134,19 @@ src/
 
 ### 主题颜色
 
-在 `tailwind.config.js` 中自定义主题：
+在 `uno.config.ts` 中自定义主题：
 
-```js
-module.exports = {
+```ts
+import { defineConfig } from 'unocss'
+
+export default defineConfig({
   theme: {
-    extend: {
-      colors: {
-        primary: '#6366f1',
-        // ...
-      }
+    colors: {
+      primary: '#6366f1',
+      // ...
     }
   }
-}
+})
 ```
 
 ### 裁剪参数
