@@ -29,12 +29,9 @@
 - 🖼️ **智能裁剪** - 自动将大图切割成自定义网格
 - 🎨 **背景去除** - 智能移除指定颜色背景，支持取色器
 - 📐 **精确控制** - 支持位置、尺寸、内缩微调
-- 🌙 **深色模式** - 完美的暗色主题支持
-- 📱 **响应式设计** - 适配各种屏幕尺寸
 - ⚡ **实时预览** - 即时查看裁剪效果
 - 🎯 **锁定居中** - 一键居中对齐裁剪区域
 - 📦 **批量下载** - 支持 ZIP 打包和单独下载
-- 🤖 **AI 生成提示** - 集成 Gemini AI 图片生成指南
 
 ## 🚀 快速开始
 
@@ -112,23 +109,6 @@ pnpm preview
 - **样式框架**: UnoCSS
 - **构建工具**: Vite
 - **图片处理**: Canvas API
-- **状态管理**: Vue Composition API
-
-## 📁 项目结构
-
-```
-src/
-├── components/          # 组件
-│   └── GeminiPrompt.vue # AI 生成提示组件
-├── composables/         # 组合式函数
-│   ├── useCropConfig.ts # 裁剪配置管理
-│   ├── useDownload.ts   # 下载功能
-│   ├── useImageCropper.ts # 图片裁剪
-│   └── useImageUpload.ts # 图片上传
-├── pages/
-│   └── index.vue        # 主页面
-└── assets/              # 静态资源
-```
 
 ## 🔧 自定义配置
 
